@@ -4,3 +4,6 @@ huggingface_hub
 atlassian-python-api
 Pillow
 lxml
+sentence_transformers
+chromadb
+tiktoken
