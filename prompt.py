@@ -12,13 +12,13 @@ import os
 os.environ["HUGGINGFACEHUB_API_TOKEN"] = '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'
 
 loader = ConfluenceLoader(
-    url="https://igops.atlassian.net/wiki", username="igor.oliveira@e-core.com", api_key="ATATT3xFfGF0VOzgNdI-Mg8daCfG7OaWHd9G6tl_bcEY_CALfn40qcf9bCIkmwiKnAgcgxqO6X_WeqkfPpftNJx8DYmmsrijdnNviDQkkIAjz1SnvRf563Ji6GYajIs9awcv6DdWckiR8NtgxwMBsQ1D1eXKxr1jIh9t1sj654hiLYNidKGRqGc=1A631685"
+    url="https://igops.atlassian.net/wiki", username="igor.oliveira@e-core.com", api_key="ATATT3xFfGF0oS7L1Xy3aDxWqQp6rAXeww169zyqTVABPaeDzMzFoSX_KPgNgumTQ6QSaNVslDEIGi25vbgXgOKssxvcpmcXn2I_eNHQBIVfH57LAW6YhJkjQr35chyyvxussVHHwiRe9VWkS5VqQErtla9D1vdCzufZ8iLLPlRevKLGQ20GUcE=6B282381"
 )
-documents = loader.load(space_key="IGOPS", include_attachments=False, limit=50)
+documents = loader.load(space_key="DKMA0001", include_attachments=False, limit=50)
 
 text_splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=0)
 texts = text_splitter.split_documents(documents)
-text_splitter = TokenTextSplitter(chunk_size=1000, chunk_overlap=10, encoding_name="cl100k_base")  # This the encoding for text-embedding-ada-002
+text_splitter = TokenTextSplitter(chunk_size=200, chunk_overlap=10, encoding_name="cl100k_base")  # This the encoding for text-embedding-ada-002
 texts = text_splitter.split_documents(texts)
 
 embeddings = HuggingFaceEmbeddings()
