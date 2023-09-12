@@ -1,8 +1,8 @@
 {
-    "Comment": "Crawler Confluence",
-    "StartAt": "Crawler Confluence Pages",
+    "Comment": "Spotify Flow",
+    "StartAt": "Get Spotify Playlist",
     "States": {
-      "Crawler Confluence Pages": {
+      "Get Spotifly Playlist": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
@@ -31,7 +31,7 @@
           {
             "Variable": "$.next",
             "IsPresent": true,
-            "Next": "Crawler Confluence Pages"
+            "Next": "Get Spotifly Playlist"
           }
         ],
         "Default": "Success"

@@ -8,7 +8,7 @@ locals {
   playlist_name = "spotify-playlist"
 }
 
-module "docker_image" {
+module "docker_image_spotify_playlist" {
   source = "terraform-aws-modules/lambda/aws//modules/docker-build"
 
   create_ecr_repo = true
@@ -85,20 +85,5 @@ module "step_function_spotify" {
   }
 
   type = "STANDARD"
-}
-
-module "s3_bucket_raw" {
-  source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.14.1"
-
-  bucket = "dde-crawler-raw"
-  acl    = "private"
-
-  control_object_ownership = true
-  object_ownership         = "ObjectWriter"
-
-  versioning = {
-    enabled = true
-  }
 }
 
