@@ -8,6 +8,25 @@ locals {
   playlist_name = "spotify-playlist"
 }
 
+module "dynamodb_table" {
+  source = "terraform-aws-modules/dynamodb-table/aws"
+
+  name      = "playlists"
+  hash_key  = "pk"
+  range_key = "sk"
+
+  attributes = [
+    {
+      name = "pk"
+      type = "S"
+    },
+    {
+      name = "sk"
+      type = "S"
+    }
+  ]
+}
+
 module "docker_image_spotify_playlist" {
   source = "terraform-aws-modules/lambda/aws//modules/docker-build"
 
@@ -29,8 +48,8 @@ module "docker_image_spotify_playlist" {
       }
     ]
   })
-  image_tag   = "0.18"
-  source_path = "pages"
+  image_tag   = "0.14"
+  source_path = "spotify-playlist"
   platform    = "linux/amd64"
 }
 
@@ -45,21 +64,19 @@ module "lambda_function_spotify_playlist" {
   memory_size    = 1024
   timeout        = 10 # seconds
   create_package = false
-  image_uri      = module.docker_image.image_uri
+  image_uri      = module.docker_image_spotify_playlist.image_uri
   package_type   = "Image"
   architectures  = ["x86_64"]
 
   environment_variables = {
-    HOST                 = "https://igops.atlassian.net"
-    USERNAME             = "igor.oliveira@e-core.com"
-    API_TOKEN            = "ATATT3xFfGF00pgC5lhyTkTCGZ_7TwAVl-mAXz3OBlg7-Z-JNiRa_tTY9K2I1jFFBqr4gB6bKr2ZBWaa5lsqhuLtpxM2FMJafatNn-LA5098MyM5gfFSjX1RrWend9AOEb770gc4dwROnKGGzKdrqQt7jhypcZs5BAg2TTseUDqvRi5j7T7XkTY=7323E5E4"
+    TABLE_NAME    = module.dynamodb_table.dynamodb_table_id
   }
   attach_policy_statements = true
   policy_statements = {
-    firehose = {
+    dynamodb = {
       effect    = "Allow",
-      actions   = ["firehose:PutRecord"],
-      resources = [aws_kinesis_firehose_delivery_stream.crawler_confluence_pages_raw.arn]
+      actions   = ["dynamodb:*"],
+      resources = [module.dynamodb_table.dynamodb_table_arn]
     }
   }
   create_current_version_allowed_triggers = false
@@ -71,7 +88,7 @@ module "step_function_spotify" {
 
   name = "sf-spotify"
   definition = templatefile("${path.module}/states.tpl", {
-    lambda_function_arn = module.lambda_function_pages.lambda_function_arn
+    lambda_function_arn = module.lambda_function_spotify_playlist.lambda_function_arn
   })
 
   logging_configuration = {
@@ -80,7 +97,7 @@ module "step_function_spotify" {
   }
   service_integrations = {
     lambda = {
-      lambda = [module.lambda_function_pages.lambda_function_arn, "${module.lambda_function_pages.lambda_function_arn}:*"]
+      lambda = [module.lambda_function_spotify_playlist.lambda_function_arn, "${module.lambda_function_spotify_playlist.lambda_function_arn}:*"]
     }
   }
 

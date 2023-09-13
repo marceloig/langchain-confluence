@@ -2,7 +2,7 @@
     "Comment": "Spotify Flow",
     "StartAt": "Get Spotify Playlist",
     "States": {
-      "Get Spotifly Playlist": {
+      "Get Spotify Playlist": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
@@ -31,7 +31,7 @@
           {
             "Variable": "$.next",
             "IsPresent": true,
-            "Next": "Get Spotifly Playlist"
+            "Next": "Get Spotify Playlist"
           }
         ],
         "Default": "Success"
