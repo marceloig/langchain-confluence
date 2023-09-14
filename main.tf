@@ -48,7 +48,7 @@ module "docker_image_spotify_playlist" {
       }
     ]
   })
-  image_tag   = "0.14"
+  image_tag   = "0.22"
   source_path = "spotify-playlist"
   platform    = "linux/amd64"
 }
@@ -62,7 +62,7 @@ module "lambda_function_spotify_playlist" {
   description   = "My awesome lambda function"
 
   memory_size    = 1024
-  timeout        = 10 # seconds
+  timeout        = 60 # seconds
   create_package = false
   image_uri      = module.docker_image_spotify_playlist.image_uri
   package_type   = "Image"

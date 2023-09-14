@@ -16,27 +16,24 @@ def handler(event, context):
 
         validate(event)
 
-        next = event.get('next')
-        headers = {"Authorization": "Bearer " + event.get('access_token')}
+        spotify = Spotify(access_token=event.get('access_token'))
 
-        response = requests.get(next, headers=headers)
+        response = spotify.get(event.get('next_playlist'))
         if response.status_code != 200:
             logger.error(f"Error: Request returned status code {response.status_code}")
             raise Exception(response.text)
         
         data = response.json()
 
-        response = requests.get("https://api.spotify.com/v1/me", headers=headers)
-        user = response.json()
-
-        save_playlists(table_name, user['id'], data['items'])
+        save_playlists(table_name, spotify, data['items'])
         
         if data.get('next') == None:
             return {}
         
         output = {
-            'next': build_next(data), 
-            'access_token': event.get('access_token')
+            'next_playlist': build_next(data), 
+            'access_token': event.get('access_token'),
+            'tracks': build_tracks(event.get('tracks'), data['items'])
             }
 
         return output
@@ -44,21 +41,66 @@ def handler(event, context):
         logger.error(e)
         raise e
 
-def save_playlists(table_name, user_id, items):
+def build_tracks(tracks, items):
+    if not tracks:
+        tracks = []
+
+    for item in items:
+        tracks.append(item['tracks']['href'])
+    
+    return tracks
+
+def save_playlists(table_name, spotify, items):
+    
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(table_name)
+    
+    response = spotify.get("https://api.spotify.com/v1/me")
+    user = response.json()
+    user_id = user['id']
+    
     for item in items:
-        item['pk'] = 'spotify#' + user_id
-        item['sk'] = item['name']
+        item['pk'] = 'SPOTIFY#' + user_id
+        item['sk'] = 'PLAYLIST#' + item['id']
+        table.put_item(
+            Item=item
+        )
+        save_tracks(table_name, spotify, item)
+
+def save_tracks(table_name, spotify, playlist):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(table_name)
+    
+    response = spotify.get("https://api.spotify.com/v1/me")
+    user = response.json()
+    user_id = user['id']
+    response = spotify.get(playlist['tracks']['href'])
+    data = response.json()
+    print(json.dumps(data))
+
+    for item in data['items']:
+        if not item['track'].get('id'):
+            continue
+
+        item['pk'] = 'SPOTIFY#' + user_id
+        item['sk'] = playlist['id'] + '#' + item['track']['id']
         table.put_item(
             Item=item
         )
 
+
 def validate(event):
-    if event.get('next') == None:
+    if event.get('next_playlist') == None:
         raise Exception("Attribute 'next' have been present with string value")
-    if not event.get('next'):
+    if not event.get('next_playlist'):
         raise Exception("Attribute 'next' not have been empty string")
 
 def build_next(data):
     return data.get('next')
+
+class Spotify:
+    def __init__(self, access_token):
+        self.headers = {"Authorization": "Bearer " + access_token}
+        
+    def get(self, url):
+        return requests.get(url, headers=self.headers)

@@ -1,8 +1,8 @@
 {
     "Comment": "Spotify Flow",
-    "StartAt": "Get Spotify Playlist",
+    "StartAt": "Get Spotify Playlists",
     "States": {
-      "Get Spotify Playlist": {
+      "Get Spotify Playlists": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
@@ -23,15 +23,15 @@
             "BackoffRate": 2
           }
         ],
-        "Next": "Has Next?"
+        "Next": "Has Next Playlist?"
       },
-      "Has Next?": {
+      "Has Next Playlist?": {
         "Type": "Choice",
         "Choices": [
           {
-            "Variable": "$.next",
+            "Variable": "$.next_playlist",
             "IsPresent": true,
-            "Next": "Get Spotify Playlist"
+            "Next": "Get Spotify Playlists"
           }
         ],
         "Default": "Success"
