@@ -14,29 +14,12 @@ def handler(event, context):
         logger.info(event)
         table_name = os.environ["TABLE_NAME"]
 
-        validate(event)
-
-        spotify = Spotify(access_token=event.get('access_token'))
-
-        response = spotify.get(event.get('next_playlist'))
-        if response.status_code != 200:
-            logger.error(f"Error: Request returned status code {response.status_code}")
-            raise Exception(response.text)
+        #validate(event)
         
-        data = response.json()
+        if not event.get('next_track'):
+            return event
 
-        save_playlists(table_name, spotify, data['items'])
-        
-        if data.get('next') == None:
-            return {}
-        
-        output = {
-            'next_playlist': build_next(data), 
-            'access_token': event.get('access_token'),
-            'tracks': build_tracks(event.get('tracks'), data['items'])
-            }
-
-        return output
+        return
     except Exception as e:
         logger.error(e)
         raise e
@@ -90,10 +73,10 @@ def save_tracks(table_name, spotify, playlist):
 
 
 def validate(event):
-    if event.get('next_playlist') == None:
-        raise Exception("Attribute 'next' have been present with string value")
-    if not event.get('next_playlist'):
-        raise Exception("Attribute 'next' not have been empty string")
+    if event.get('next_track') == None:
+        raise Exception("Attribute 'next_track' have been present with string value")
+    if not event.get('next_track'):
+        raise Exception("Attribute 'next_track' not have been empty string")
 
 def build_next(data):
     return data.get('next')

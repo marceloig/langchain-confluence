@@ -6,6 +6,7 @@ data "aws_region" "current" {}
 
 locals {
   playlist_name = "spotify-playlist"
+  track_name    = "spotify-track"
 }
 
 module "dynamodb_table" {
@@ -53,6 +54,32 @@ module "docker_image_spotify_playlist" {
   platform    = "linux/amd64"
 }
 
+module "docker_image_spotify_track" {
+  source = "terraform-aws-modules/lambda/aws//modules/docker-build"
+
+  create_ecr_repo = true
+  ecr_repo        = local.track_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 2 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 2
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+  image_tag   = "0.22"
+  source_path = "spotify"
+  platform    = "linux/amd64"
+}
+
 
 module "lambda_function_spotify_playlist" {
   source  = "terraform-aws-modules/lambda/aws"
@@ -69,7 +96,35 @@ module "lambda_function_spotify_playlist" {
   architectures  = ["x86_64"]
 
   environment_variables = {
-    TABLE_NAME    = module.dynamodb_table.dynamodb_table_id
+    TABLE_NAME = module.dynamodb_table.dynamodb_table_id
+  }
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb = {
+      effect    = "Allow",
+      actions   = ["dynamodb:*"],
+      resources = [module.dynamodb_table.dynamodb_table_arn]
+    }
+  }
+  create_current_version_allowed_triggers = false
+}
+
+module "lambda_function_spotify_track" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "5.0.0"
+
+  function_name = local.track_name
+  description   = "My awesome lambda function"
+
+  memory_size    = 1024
+  timeout        = 60 # seconds
+  create_package = false
+  image_uri      = module.docker_image_spotify_track.image_uri
+  package_type   = "Image"
+  architectures  = ["x86_64"]
+
+  environment_variables = {
+    TABLE_NAME = module.dynamodb_table.dynamodb_table_id
   }
   attach_policy_statements = true
   policy_statements = {
@@ -88,7 +143,8 @@ module "step_function_spotify" {
 
   name = "sf-spotify"
   definition = templatefile("${path.module}/states.tpl", {
-    lambda_function_arn = module.lambda_function_spotify_playlist.lambda_function_arn
+    spotify_playlist_arn  = module.lambda_function_spotify_playlist.lambda_function_arn
+    spotify_track_arn_arn = module.lambda_function_spotify_track.lambda_function_arn
   })
 
   logging_configuration = {
@@ -97,7 +153,11 @@ module "step_function_spotify" {
   }
   service_integrations = {
     lambda = {
-      lambda = [module.lambda_function_spotify_playlist.lambda_function_arn, "${module.lambda_function_spotify_playlist.lambda_function_arn}:*"]
+      lambda = [
+        module.lambda_function_spotify_playlist.lambda_function_arn,
+        "${module.lambda_function_spotify_playlist.lambda_function_arn}:*",
+        module.lambda_function_spotify_track.lambda_function_arn,
+        "${module.lambda_function_spotify_track.lambda_function_arn}:*"]
     }
   }
 
