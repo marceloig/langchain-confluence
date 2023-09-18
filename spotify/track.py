@@ -29,12 +29,11 @@ def build_tracks(tracks, items):
         tracks = []
 
     for item in items:
-        tracks.append(item['tracks']['href'])
+        tracks.append({'next_playlist': item['tracks']['href']})
     
     return tracks
 
 def save_playlists(table_name, spotify, items):
-    
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(table_name)
     

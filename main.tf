@@ -49,8 +49,8 @@ module "docker_image_spotify_playlist" {
       }
     ]
   })
-  image_tag   = "0.22"
-  source_path = "spotify-playlist"
+  image_tag   = "0.24"
+  source_path = "spotify"
   platform    = "linux/amd64"
 }
 
@@ -75,7 +75,7 @@ module "docker_image_spotify_track" {
       }
     ]
   })
-  image_tag   = "0.22"
+  image_tag   = "0.24"
   source_path = "spotify"
   platform    = "linux/amd64"
 }

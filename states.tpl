@@ -23,7 +23,8 @@
           "BackoffRate": 2
         }
       ],
-      "Next": "Has Next Playlist?"
+      "Next": "Has Next Playlist?",
+      "ResultPath": "$"
     },
     "Has Next Playlist?": {
       "Type": "Choice",
@@ -85,6 +86,7 @@
       },
       "Next": "Success",
       "ItemsPath": "$.tracks",
+      "ResultPath": "$",
       "MaxConcurrency": 1
     },
     "Success": {
