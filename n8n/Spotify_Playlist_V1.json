@@ -1,0 +1,604 @@
+{
+    "name": "Spotify Playlist V1",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "7a9dee5a-fbd7-4f72-8cfe-11ee53da8b39",
+        "name": "When clicking \"Execute Workflow\"",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -60,
+          720
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{$node[\"Config Playlists URL\"].json[\"next\"]}}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "spotifyOAuth2Api",
+          "options": {}
+        },
+        "id": "67925c95-5afb-4753-9711-3958aba48de2",
+        "name": "Playlists Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          420,
+          720
+        ],
+        "credentials": {
+          "spotifyOAuth2Api": {
+            "id": "1",
+            "name": "Spotify account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "amount": 5,
+          "unit": "seconds"
+        },
+        "id": "89c85c5a-031e-4973-a6b8-0461df216097",
+        "name": "Wait Playlists",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [
+          1360,
+          720
+        ],
+        "webhookId": "f2fd1eac-5e97-465b-a666-96a4a4bd6f76"
+      },
+      {
+        "parameters": {
+          "url": "https://api.spotify.com/v1/me",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "spotifyOAuth2Api",
+          "options": {}
+        },
+        "id": "6afefb7d-d49f-49a0-9288-bf053dbdd179",
+        "name": "Me Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          640,
+          720
+        ],
+        "credentials": {
+          "spotifyOAuth2Api": {
+            "id": "1",
+            "name": "Spotify account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "tableName": "playlists",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "pk",
+                "fieldValue": "={{ $json.pk }}"
+              },
+              {
+                "fieldId": "sk",
+                "fieldValue": "={{ $json.sk }}"
+              },
+              {
+                "fieldId": "name",
+                "fieldValue": "={{ $json.name }}"
+              },
+              {
+                "fieldId": "type",
+                "fieldValue": "={{ $json.type }}"
+              },
+              {
+                "fieldId": "href",
+                "fieldValue": "={{ $json.href }}"
+              },
+              {
+                "fieldId": "description",
+                "fieldValue": "={{ $json.description || \"null\" }}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "id": "8e255277-7e09-46a3-82ec-c00b960d4cf4",
+        "name": "AWS DynamoDB",
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          1080,
+          720
+        ],
+        "credentials": {
+          "aws": {
+            "id": "2",
+            "name": "AWS account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "id": "b3a9004c-f1c9-482e-879c-2a2f74902a81",
+        "name": "No Operation, do nothing",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          3820,
+          880
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n//{{$node[\"Playlists Request\"].json[\"next\"]}}\n//$(\"<node-name>\").all(branchIndex?, runIndex?)\nlet playlists_items = $(\"Playlists Request\").all(0, $runIndex)\nlet me = $input.all()[0].json\nlet items = []\nfor (const item of playlists_items[0].json.items) {\n  item.pk = 'SPOTIFY#' + me.id\n  item.sk = 'PLAYLIST#' + item.id\n  items.push(item);\n}\n\nreturn items;"
+        },
+        "id": "f621cac1-f430-4f51-a69b-994b8c359c59",
+        "name": "Transform Playlists",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          860,
+          720
+        ]
+      },
+      {
+        "parameters": {
+          "keepOnlySet": true,
+          "values": {
+            "string": [
+              {
+                "name": "next",
+                "value": "={{$node[\"Playlists Request\"].json[\"next\"]}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "name": "Set next Playlists URL",
+        "type": "n8n-nodes-base.set",
+        "position": [
+          2200,
+          420
+        ],
+        "executeOnce": true,
+        "typeVersion": 1,
+        "id": "01bc9199-66b8-428d-9c3e-5b5d606e49df"
+      },
+      {
+        "parameters": {
+          "jsCode": "\nlet next = 'https://api.spotify.com/v1/me/playlists'\n\nif (items[0].json.next) {\n  next = items[0].json.next\n}\n\nreturn [{next : next}]"
+        },
+        "id": "cd9765d6-1ac2-4c66-be2f-6c533e7964cc",
+        "name": "Config Playlists URL",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          220,
+          720
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "\nlet tracks_items = $(\"Tracks Request\").all(0, $runIndex)\nlet me_items = $(\"Me Request\").all(0, 0)\nlet me = me_items[0].json\nlet items = []\nfor (const item of tracks_items[0].json.items) {\n  item.pk = 'SPOTIFY#' + me.id\n  paths = tracks_items[0].json.href.split('/')\n  item.sk = paths[5] + '#' + item.track.id\n  items.push(item);\n}\n\nreturn items;"
+        },
+        "id": "30533a42-81f7-4b6e-8d28-755fc4b0dc84",
+        "name": "Transform Tracks",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          2780,
+          740
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{$node[\"Config Tracks URL\"].json[\"next\"]}}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "spotifyOAuth2Api",
+          "options": {}
+        },
+        "id": "58063395-2b04-49c7-b465-a60c61f9e7f1",
+        "name": "Tracks Request",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          2480,
+          740
+        ],
+        "credentials": {
+          "spotifyOAuth2Api": {
+            "id": "1",
+            "name": "Spotify account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "unit": "seconds"
+        },
+        "id": "67718c53-1e7c-4cc4-81f3-ebea4b1bc973",
+        "name": "Wait",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [
+          3300,
+          740
+        ],
+        "webhookId": "e4ec0ae0-7415-43fe-bca0-d10addc899e1"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [],
+            "boolean": [
+              {
+                "value1": "={{$node[\"Playlists Request\"].json[\"next\"] ? true : false}}",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "name": "Check if playlists next?",
+        "type": "n8n-nodes-base.if",
+        "position": [
+          1640,
+          720
+        ],
+        "typeVersion": 1,
+        "id": "950694e3-ae63-4fb6-93b0-f8a8a5acf765"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{$node[\"Tracks Request\"].json[\"next\"] ? true : false}}",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "id": "6c876dae-d5c3-4370-be31-ef8561a84eff",
+        "name": "Check if tracks next?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          3580,
+          740
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "next",
+                "value": "={{$node[\"Tracks Request\"].json[\"next\"]}}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "a21dca83-f623-4f9f-99c2-4d5efc2d4287",
+        "name": "Set next tracks URL",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 2,
+        "position": [
+          3820,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "\nlet next = $('Split In Batches').first().json.href\n\nif (items[0].json.next) {\n  next = items[0].json.next\n}else{\n  next = next + \"/tracks\"\n}\n\nreturn [{next : next}]"
+        },
+        "id": "a5260a83-abb3-4cc7-a102-4bc619b97d7a",
+        "name": "Config Tracks URL",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          2200,
+          740
+        ]
+      },
+      {
+        "parameters": {
+          "batchSize": 1,
+          "options": {}
+        },
+        "id": "d55ea640-8b67-43b9-b15b-15dcb2c9e3ff",
+        "name": "Split In Batches",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 2,
+        "position": [
+          1860,
+          820
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "c480cac0-f922-447d-9c6e-14de3e1c2ec8",
+        "name": "No Operation, do nothing1",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          2080,
+          980
+        ]
+      },
+      {
+        "parameters": {
+          "tableName": "playlists",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "pk",
+                "fieldValue": "={{ $json.pk }}"
+              },
+              {
+                "fieldId": "sk",
+                "fieldValue": "={{ $json.sk }}"
+              },
+              {
+                "fieldId": "track.album.name",
+                "fieldValue": "={{ $json.track.album.name }}"
+              },
+              {
+                "fieldId": "track.name",
+                "fieldValue": "={{ $json.track.name}}"
+              },
+              {
+                "fieldId": "external_ids.isrc",
+                "fieldValue": "={{ $json.track.external_ids.isrc}}"
+              },
+              {
+                "fieldId": "track.id",
+                "fieldValue": "={{ $json.track.id}}"
+              }
+            ]
+          },
+          "additionalFields": {}
+        },
+        "id": "9764b826-4212-4b83-8ed7-4de9f1d750c3",
+        "name": "AWS DynamoDB1",
+        "type": "n8n-nodes-base.awsDynamoDb",
+        "typeVersion": 1,
+        "position": [
+          3000,
+          740
+        ],
+        "credentials": {
+          "aws": {
+            "id": "2",
+            "name": "AWS account"
+          }
+        }
+      }
+    ],
+    "pinData": {},
+    "connections": {
+      "When clicking \"Execute Workflow\"": {
+        "main": [
+          [
+            {
+              "node": "Config Playlists URL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Playlists Request": {
+        "main": [
+          [
+            {
+              "node": "Me Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait Playlists": {
+        "main": [
+          [
+            {
+              "node": "Check if playlists next?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Me Request": {
+        "main": [
+          [
+            {
+              "node": "Transform Playlists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AWS DynamoDB": {
+        "main": [
+          [
+            {
+              "node": "Wait Playlists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transform Playlists": {
+        "main": [
+          [
+            {
+              "node": "AWS DynamoDB",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set next Playlists URL": {
+        "main": [
+          [
+            {
+              "node": "Config Playlists URL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config Playlists URL": {
+        "main": [
+          [
+            {
+              "node": "Playlists Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transform Tracks": {
+        "main": [
+          [
+            {
+              "node": "AWS DynamoDB1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tracks Request": {
+        "main": [
+          [
+            {
+              "node": "Transform Tracks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Check if tracks next?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check if playlists next?": {
+        "main": [
+          [
+            {
+              "node": "Set next Playlists URL",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check if tracks next?": {
+        "main": [
+          [
+            {
+              "node": "Set next tracks URL",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "No Operation, do nothing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set next tracks URL": {
+        "main": [
+          [
+            {
+              "node": "Config Tracks URL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config Tracks URL": {
+        "main": [
+          [
+            {
+              "node": "Tracks Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split In Batches": {
+        "main": [
+          [
+            {
+              "node": "Config Tracks URL",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "No Operation, do nothing1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AWS DynamoDB1": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "timezone": "America/Sao_Paulo",
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionTimeout": 1800
+    },
+    "versionId": "701cf22c-e0d6-4231-8fee-694892e73d7d",
+    "id": "1",
+    "meta": {
+      "instanceId": "8240345828d9c07c135e9ae488885e6b12ee27afacb73432c9dea7ad4c728f69"
+    },
+    "tags": []
+  }
